@@ -84,11 +84,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _buy() async {
-    await launchUrl(
-      Uri.parse("http://47.114.49.46/"),
-      mode: LaunchMode.externalApplication,
-    );
-  }
+  await launchUrl(
+    Uri.parse("https://shop.369fk.lol/liebiao/7C65DDCA24D1EF16"),
+    mode: LaunchMode.externalApplication,
+  );
+}
 
   Future<void> _qqGroup() async {
     final key = "920222903";
