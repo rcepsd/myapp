@@ -91,14 +91,14 @@ class _HomePageState extends State<HomePage> {
 }
 
   Future<void> _qqGroup() async {
-    final key = "920222903";
-    final url = "mqqopensdkapi://bizAgent/qm/qr?url=http://qm.qq.com/cgi-bin/qm/qr?k=$key";
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-    } else {
-      await launchUrl(Uri.parse("https://qm.qq.com/cgi-bin/qm/qr?k=$key"));
-    }
+  final key = "920222903";
+  final url = "mqqapi://card/show_pslcard?src_type=internal&version=1&uin=$key&card_type=group&source=qrcode";
+  if (await canLaunchUrl(Uri.parse(url))) {
+    await launchUrl(Uri.parse(url));
+  } else {
+    await launchUrl(Uri.parse("https://qm.qq.com/cgi-bin/qm/qr?k=$key"));
   }
+}
 
   Future<void> _qqChat() async {
     final qq = "3959650835";
