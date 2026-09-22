@@ -1,3 +1,4 @@
+import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
@@ -19,11 +20,61 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'MyApp',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomePage(),
+      home: const SplashPage(),
     );
   }
 }
 
+
+class SplashPage extends StatefulWidget {
+  const SplashPage({super.key});
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage> {
+  late VideoPlayerController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl =
+VideoPlayerController.asset('assets/start.mp4')
+      ..initialize().then((_) {
+        setState(() {});
+        _ctrl.play();
+        _ctrl.addListener(() {
+          if (_ctrl.value.position >= _ctrl.value.duration) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomePage()),
+            );
+          }
+        });
+      });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: _ctrl.value.isInitialized
+            ? AspectRatio(
+                aspectRatio: _ctrl.value.aspectRatio,
+                child: VideoPlayer(_ctrl),
+              )
+            : const CircularProgressIndicator(),
+      ),
+    );
+  }
+}
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
   @override
