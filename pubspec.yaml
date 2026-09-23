@@ -1,5 +1,5 @@
 name: app_client
-description: MyApp
+description: Stella Polaris
 version: 1.0.0+1
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -27,6 +27,5 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#000000"
-  image: "splash.png"
   android: true
   ios: true
