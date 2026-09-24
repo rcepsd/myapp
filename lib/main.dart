@@ -36,23 +36,28 @@ class _SplashPageState extends State<SplashPage> {
   late VideoPlayerController _ctrl;
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl =
-VideoPlayerController.asset('assets/start.mp4')
-      ..initialize().then((_) {
-        setState(() {});
-        _ctrl.play();
-        _ctrl.addListener(() {
-          if (_ctrl.value.position >= _ctrl.value.duration) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomePage()),
-            );
-          }
-        });
+void initState() {
+  super.initState();
+  _ctrl = VideoPlayerController.asset('assets/start.mp4')
+    ..initialize().then((_) {
+      setState(() {});
+      _ctrl.play();
+      _ctrl.addListener(() {
+        if (_ctrl.value.position >= _ctrl.value.duration) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
       });
-  }
+    }).catchError((e) {
+      debugPrint('VIDEO ERROR: $e');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    });
+}
 
   @override
   void dispose() {
