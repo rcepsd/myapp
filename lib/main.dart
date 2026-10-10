@@ -1,3 +1,4 @@
+import 'package:image_picker/image_picker.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -43,7 +44,39 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void initState() {
-    super.initState();
+    super.initState();WidgetsBinding.instance.addPostFrameCallback((_) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => AlertDialog(
+      backgroundColor: const Color(0xFF1A1A1A),
+      title: const Text("星盟安全",
+          style: TextStyle(color: Colors.white)),
+      content: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("更新内容",
+              style: TextStyle(color: Colors.white70, fontSize: 16)),
+          SizedBox(height: 8),
+          Text("1. 优化了界面",
+              style: TextStyle(color: Colors.white54)),
+          SizedBox(height: 4),
+          Text("2. 更新社区",
+              style: TextStyle(color: Colors.white54)),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("确定",
+              style: TextStyle(color: Color(0xFF4ADE80))),
+        ),
+      ],
+    ),
+  );
+});
+
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
     Timer.periodic(const Duration(seconds: 4), (_) {
@@ -204,9 +237,29 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
       appBar: AppBar(
-        title: const Text("Stella Polaris"),
-        backgroundColor: const Color(0xFF1A1A1A),
+  backgroundColor: const Color(0xFF1A1A1A),
+  title: ShaderMask(
+    shaderCallback: (bounds) => const LinearGradient(
+      colors: [
+        Color(0xFF00E5FF),
+        Color(0xFF4ADE80),
+        Color(0xFFFFD700),
+      ],
+    ).createShader(bounds),
+    child: const Text(
+      "北极星工作室",
+      style: TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+        shadows: [
+          Shadow(color: Color(0xFF00E5FF), blurRadius: 12),
+          Shadow(color: Color(0xFF4ADE80), blurRadius: 20),
+        ],
       ),
+    ),
+  ),
+),
+
       body: pages[_tabIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _tabIndex,
@@ -545,24 +598,6 @@ class _AuthPageState extends State<AuthPage> {
   }
 }
 
-class WallFeedPage extends StatelessWidget {
-  const WallFeedPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      appBar: AppBar(
-        title: const Text("社区"),
-        backgroundColor: const Color(0xFF1A1A1A),
-      ),
-      body: const Center(
-        child: Text("社区帖子流（待开发）",
-            style: TextStyle(color: Colors.white54)),
-      ),
-    );
-  }
-}
-
 class Game2048 extends StatefulWidget {
   const Game2048({super.key});
   @override
@@ -704,6 +739,183 @@ class _Game2048State extends State<Game2048> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class WallFeedPage extends StatefulWidget {
+  const WallFeedPage({super.key});
+  @override
+  State<WallFeedPage> createState() => _WallFeedPageState();
+}
+
+class _WallFeedPageState extends State<WallFeedPage> {
+  final _msgCtrl = TextEditingController();
+  List<Map<String, dynamic>> _messages = [];
+  String _nickname = "游客";
+  String _avatar = "";
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+    _loadMessages();
+    _pollTimer =
+        Timer.periodic(const Duration(seconds: 2), (_) => _loadMessages());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _msgCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _nickname = prefs.getString("nickname") ?? "游客";
+      _avatar = prefs.getString("avatar") ?? "";
+    });
+  }
+
+  Future<void> _loadMessages() async {
+    try {
+      final res = await http
+          .get(Uri.parse("http://47.114.49.46/api/chat/messages"));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as List;
+        setState(() {
+          _messages = data.cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (e) {}
+  }
+
+  Future<void> _send() async {
+    final text = _msgCtrl.text.trim();
+    if (text.isEmpty) return;
+    try {
+      await http.post(
+        Uri.parse("http://47.114.49.46/api/chat/send"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "nickname": _nickname,
+          "content": text,
+          "avatar": _avatar,
+        }),
+      );
+      _msgCtrl.clear();
+      await _loadMessages();
+    } catch (e) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        title: const Text("星盟安全社区"),
+        backgroundColor: const Color(0xFF1A1A1A),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: _messages.length,
+              itemBuilder: (context, i) {
+                final m = _messages[i];
+                final isMe = m["nickname"] == _nickname;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: isMe
+                        ? MainAxisAlignment.end
+                        : MainAxisAlignment.start,
+                    children: [
+                      if (!isMe)
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: const Color(0xFF1A1A1A),
+                          child: Text(
+                            (m["nickname"] ?? "?").toString()[0],
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                          children: [
+                            Text(m["nickname"] ?? "",
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 12)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isMe
+                                    ? const Color(0xFF4ADE80)
+                                    : const Color(0xFF1A1A1A),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                m["content"] ?? "",
+                                style: TextStyle(
+                                  color: isMe ? Colors.black : Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (isMe)
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: const Color(0xFF4ADE80),
+                          child: Text(
+                            _nickname[0],
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+
+          Container(
+            padding: const EdgeInsets.all(8),
+            color: const Color(0xFF1A1A1A),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _msgCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      hintText: "说点什么...",
+                      hintStyle: TextStyle(color: Colors.white38),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _send,
+                  icon: const Icon(Icons.send, color: Color(0xFF4ADE80)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
