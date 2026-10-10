@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:video_player/video_player.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,61 +20,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Stella Polaris',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const SplashPage(),
-    );
-  }
-}
-
-class SplashPage extends StatefulWidget {
-  const SplashPage({super.key});
-  @override
-  State<SplashPage> createState() => _SplashPageState();
-}
-
-class _SplashPageState extends State<SplashPage> {
-  late VideoPlayerController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = VideoPlayerController.asset('assets/start.mp4')
-      ..initialize().then((_) {
-        setState(() {});
-        _ctrl.play();
-        _ctrl.addListener(() {
-          if (_ctrl.value.position >= _ctrl.value.duration) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomePage()),
-            );
-          }
-        });
-      }).catchError((e) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: _ctrl.value.isInitialized
-            ? AspectRatio(
-                aspectRatio: _ctrl.value.aspectRatio,
-                child: VideoPlayer(_ctrl),
-              )
-            : const CircularProgressIndicator(),
-      ),
+      home: const HomePage(),
     );
   }
 }
@@ -90,6 +36,40 @@ class _HomePageState extends State<HomePage> {
   String _msg = "";
   bool _unlocked = false;
   int _tabIndex = 0;
+  final PageController _bannerCtrl = PageController();
+  int _bannerIndex = 0;
+  String _timeStr = "--:--";
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
+    Timer.periodic(const Duration(seconds: 4), (_) {
+      if (_bannerCtrl.hasClients) {
+        final next = (_bannerIndex + 1) % 3;
+        _bannerCtrl.animateToPage(next,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut);
+      }
+    });
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    setState(() {
+      _timeStr =
+          "${now.hour.toString().padLeft(2, "0")}:${now.minute.toString().padLeft(2, "0")}";
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _bannerCtrl.dispose();
+    super.dispose();
+  }
 
   Future<String> _deviceId() async {
     final info = DeviceInfoPlugin();
@@ -103,7 +83,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _activate() async {
     final card = _cardCtrl.text.trim();
     if (card.isEmpty) {
-      setState(() => _msg = "请输入卡密");
+      setState(() => _msg = "卡密错误");
       return;
     }
     final device = await _deviceId();
@@ -132,10 +112,10 @@ class _HomePageState extends State<HomePage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool("unlocked", true);
       } else {
-        setState(() => _msg = "激活失败：${data['detail'] ?? res.body}");
+        setState(() => _msg = "卡密错误");
       }
     } catch (e) {
-      setState(() => _msg = "网络错误：$e");
+      setState(() => _msg = "卡密错误");
     }
   }
 
@@ -167,101 +147,198 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  @override
-Widget build(BuildContext context) {
-  final pages = [
-    _buildHomeTab(),
-    _buildCommunityTab(),
-    _buildMineTab(),
-  ];
-  return Scaffold(
-    backgroundColor: const Color(0xFF0D0D0D),
-    appBar: AppBar(
-      title: const Text("Stella Polaris"),
-      backgroundColor: const Color(0xFF1A1A1A),
-    ),
-    body: pages[_tabIndex],
-    bottomNavigationBar: BottomNavigationBar(
-      currentIndex: _tabIndex,
-      onTap: (i) => setState(() => _tabIndex = i),
-      backgroundColor: const Color(0xFF1A1A1A),
-      selectedItemColor: const Color(0xFF4ADE80),
-      unselectedItemColor: Colors.white54,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: "首页"),
-        BottomNavigationBarItem(icon: Icon(Icons.people), label: "社区"),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: "我的"),
-      ],
-    ),
-  );
-}
+  bool _isDay() {
+    final h = DateTime.now().hour;
+    return h >= 6 && h < 18;
+  }
 
-Widget _buildHomeTab() {
-  return ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
-            borderRadius: BorderRadius.circular(12),
+  Widget _bannerItem(String path, {bool showTime = false}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("使用会员密钥以体验更多功能",
-                  style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _cardCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: "输入激活密钥",
-                  hintStyle: const TextStyle(color: Colors.white38),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+          child: Image.asset(path, fit: BoxFit.cover),
+        ),
+        if (showTime)
+          Center(
+            child:IgnorePointer(
+              child: ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [
+                    Color(0xFF00E5FF),
+                    Color(0xFF4ADE80),
+                    Color(0xFFFFD700),
+                  ],
+                ).createShader(bounds),
+                child: Text(
+                  _timeStr,
+                  style: const TextStyle(
+                    fontSize: 80,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 4,
+                    shadows: [
+                      Shadow(color: Color(0xFF00E5FF), blurRadius: 20),
+                      Shadow(color: Color(0xFF4ADE80), blurRadius: 30),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      _buildHomeTab(),
+      _buildCommunityTab(),
+      _buildMineTab(),
+    ];
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        title: const Text("Stella Polaris"),
+        backgroundColor: const Color(0xFF1A1A1A),
+      ),
+      body: pages[_tabIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _tabIndex,
+        onTap: (i) => setState(() => _tabIndex = i),
+        backgroundColor: const Color(0xFF1A1A1A),
+        selectedItemColor: const Color(0xFF4ADE80),
+        unselectedItemColor: Colors.white54,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "首页"),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: "社区"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "我的"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHomeTab() {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        SizedBox(
+          height: 220,
+          child: Stack(
+            children: [
+              PageView(
+                controller: _bannerCtrl,
+                onPageChanged: (i) => setState(() => _bannerIndex = i),
                 children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _buy,
-                      child: const Text("购买会员"),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _activate,
-                      child: const Text("确认密钥"),
-                    ),
-                  ),
+                  _bannerItem(_isDay() ? "assets/day.png" : "assets/night.png",
+                      showTime: true),
+                  _bannerItem(_isDay() ? "assets/night.png" : "assets/day.png",
+                      showTime: true),
+                  _bannerItem("assets/poster.jpg", showTime: false),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(_msg, style: const TextStyle(color: Colors.amber)),
+              Positioned(
+                bottom: 12,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (i) {
+                    return Container(
+                      width: _bannerIndex == i ? 16 : 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: _bannerIndex == i
+                            ? const Color(0xFF4ADE80)
+                            : Colors.white54,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("使用会员密钥以体验更多功能",
+                    style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _cardCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: "输入激活密钥",
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _buy,
+                        child: const Text("购买会员"),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _activate,
+                        child: const Text("确认密钥"),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(_msg, style: const TextStyle(color: Colors.amber)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text("免费功能",
+              style: TextStyle(color: Colors.white54, fontSize: 16)),
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _toolBtn("加入QQ群", _qqGroup),
+              _toolBtn("联系客服", _qqChat),
+              _toolBtn("2048 小游戏", () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const Game2048()));
+              }),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        const Text("免费功能",
-            style: TextStyle(color: Colors.white54, fontSize: 16)),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _toolBtn("加入QQ群", _qqGroup),
-            _toolBtn("联系客服", _qqChat),
-            _toolBtn("2048 小游戏", () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const Game2048()));
-            }),
-          ],
-        ),
       ],
     );
   }
@@ -403,6 +480,89 @@ Widget _buildHomeTab() {
   }
 }
 
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  final _userCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        title: const Text("社区账号"),
+        backgroundColor: const Color(0xFF1A1A1A),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            TextField(
+              controller: _userCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "用户名",
+                labelStyle: TextStyle(color: Colors.white54),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _passCtrl,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "密码",
+                labelStyle: TextStyle(color: Colors.white54),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    child: const Text("登录"),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    child: const Text("注册"),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class WallFeedPage extends StatelessWidget {
+  const WallFeedPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        title: const Text("社区"),
+        backgroundColor: const Color(0xFF1A1A1A),
+      ),
+      body: const Center(
+        child: Text("社区帖子流（待开发）",
+            style: TextStyle(color: Colors.white54)),
+      ),
+    );
+  }
+}
+
 class Game2048 extends StatefulWidget {
   const Game2048({super.key});
   @override
@@ -452,7 +612,7 @@ class _Game2048State extends State<Game2048> {
         }
       }
       while (line.length < 4) line.add(0);
-     for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < 4; i++) {
         int r, c;
         if (dir == 0) { r = i; c = k; }
         else if (dir == 1) { r = 3 - i; c = k; }
@@ -544,89 +704,6 @@ class _Game2048State extends State<Game2048> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
-  @override
-  State<AuthPage> createState() => _AuthPageState();
-}
-
-class _AuthPageState extends State<AuthPage> {
-  final _userCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      appBar: AppBar(
-        title: const Text("社区账号"),
-        backgroundColor: const Color(0xFF1A1A1A),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            TextField(
-              controller: _userCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: "用户名",
-                labelStyle: TextStyle(color: Colors.white54),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: "密码",
-                labelStyle: TextStyle(color: Colors.white54),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    child: const Text("登录"),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    child: const Text("注册"),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class WallFeedPage extends StatelessWidget {
-  const WallFeedPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      appBar: AppBar(
-        title: const Text("社区"),
-        backgroundColor: const Color(0xFF1A1A1A),
-      ),
-      body: const Center(
-        child: Text("社区帖子流（待开发）",
-            style: TextStyle(color: Colors.white54)),
       ),
     );
   }
