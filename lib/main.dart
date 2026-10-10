@@ -89,6 +89,7 @@ class _HomePageState extends State<HomePage> {
   final _cardCtrl = TextEditingController();
   String _msg = "";
   bool _unlocked = false;
+  int _tabIndex = 0;
 
   Future<String> _deviceId() async {
     final info = DeviceInfoPlugin();
@@ -167,80 +168,216 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      appBar: AppBar(
-        title: const Text("Stella Polaris"),
-        backgroundColor: const Color(0xFF1A1A1A),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("使用会员密钥以体验更多功能",
-                    style: TextStyle(color: Colors.white70)),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _cardCtrl,
-                  style: const TextStyle(color: Colors.white),
-                       decoration: InputDecoration(
-                    hintText: "输入激活密钥",
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+Widget build(BuildContext context) {
+  final pages = [
+    _buildHomeTab(),
+    _buildCommunityTab(),
+    _buildMineTab(),
+  ];
+  return Scaffold(
+    backgroundColor: const Color(0xFF0D0D0D),
+    appBar: AppBar(
+      title: const Text("Stella Polaris"),
+      backgroundColor: const Color(0xFF1A1A1A),
+    ),
+    body: pages[_tabIndex],
+    bottomNavigationBar: BottomNavigationBar(
+      currentIndex: _tabIndex,
+      onTap: (i) => setState(() => _tabIndex = i),
+      backgroundColor: const Color(0xFF1A1A1A),
+      selectedItemColor: const Color(0xFF4ADE80),
+      unselectedItemColor: Colors.white54,
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: "首页"),
+        BottomNavigationBarItem(icon: Icon(Icons.people), label: "社区"),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: "我的"),
+      ],
+    ),
+  );
+}
+
+Widget _buildHomeTab() {
+  return ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("使用会员密钥以体验更多功能",
+                  style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _cardCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "输入激活密钥",
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _buy,
-                        child: const Text("购买会员"),
-                      ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _buy,
+                      child: const Text("购买会员"),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _activate,
-                        child: const Text("确认密钥"),
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _activate,
+                      child: const Text("确认密钥"),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(_msg, style: const TextStyle(color: Colors.amber)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text("免费功能",
-              style: TextStyle(color: Colors.white54, fontSize: 16)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _toolBtn("加入QQ群", _qqGroup),
-              _toolBtn("联系客服", _qqChat),
-              _toolBtn("2048 小游戏", () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const Game2048()));
-              }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(_msg, style: const TextStyle(color: Colors.amber)),
             ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text("免费功能",
+            style: TextStyle(color: Colors.white54, fontSize: 16)),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _toolBtn("加入QQ群", _qqGroup),
+            _toolBtn("联系客服", _qqChat),
+            _toolBtn("2048 小游戏", () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const Game2048()));
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCommunityTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [
+                    Color(0xFF00E5FF),
+                    Color(0xFF4ADE80),
+                    Color(0xFFFFD700),
+                  ],
+                ).createShader(bounds),
+                child: const Text(
+                  "星盟安全社区",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(color: Color(0xFF00E5FF), blurRadius: 12),
+                      Shadow(color: Color(0xFF4ADE80), blurRadius: 20),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const AuthPage()));
+                },
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: const Color(0xFF4ADE80), width: 2),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0xFF4ADE80), blurRadius: 10),
+                    ],
+                  ),
+                  child: const Icon(Icons.person,
+                      color: Color(0xFF4ADE80), size: 20),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Text("社区列表",
+              style: TextStyle(color: Colors.white54, fontSize: 14)),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const WallFeedPage()));
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: const Color(0xFF4ADE80).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFF00E5FF), Color(0xFF4ADE80)]),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.forum,
+                        color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("社区",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold)),
+                        SizedBox(height: 4),
+                        Text("发帖 · 评论 · 关注",
+                            style: TextStyle(
+                                color: Colors.white54, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.white38),
+                ],
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMineTab() {
+    return const Center(
+      child: Text("我的", style: TextStyle(color: Colors.white54)),
     );
   }
 
@@ -407,6 +544,89 @@ class _Game2048State extends State<Game2048> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  final _userCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        title: const Text("社区账号"),
+        backgroundColor: const Color(0xFF1A1A1A),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            TextField(
+              controller: _userCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "用户名",
+                labelStyle: TextStyle(color: Colors.white54),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _passCtrl,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "密码",
+                labelStyle: TextStyle(color: Colors.white54),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    child: const Text("登录"),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    child: const Text("注册"),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class WallFeedPage extends StatelessWidget {
+  const WallFeedPage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        title: const Text("社区"),
+        backgroundColor: const Color(0xFF1A1A1A),
+      ),
+      body: const Center(
+        child: Text("社区帖子流（待开发）",
+            style: TextStyle(color: Colors.white54)),
       ),
     );
   }
